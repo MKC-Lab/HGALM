@@ -23,7 +23,7 @@ pip3 install -r requirements.txt
 ```
 
 ## Quick Start
-To reproduce the results in our paper, you need to first download the [**datasets**](https://drive.google.com/file/d/1FD0ddpMmWMFDdk1SwbEZ3xy93b1NvbBz/view?usp=sharing). Two datasets are used in our paper: **MAG-CS** and **PubMed**. Once you unzip the downloaded file (i.e., ```MICoL.zip```), you can see **three** folders: ```MAG/``` is the dataset folder of MAG-CS; ```PubMed/``` is the dataset folder of PubMed; ```allenai/specter2_base/``` is the pre-trained specter2 model. (The pre-trained specter2 model is from [here](https://huggingface.co/allenai/specter2_base/tree/main).)
+To reproduce the results in our paper, you need to first download the [**datasets**](https://drive.google.com/file/d/1FD0ddpMmWMFDdk1SwbEZ3xy93b1NvbBz/view?usp=sharing). Two datasets are used in our paper: **MAG-CS** and **PubMed**. Once you unzip the downloaded file (i.e., ```HGALM.zip```), you can see **three** folders: ```MAG/``` is the dataset folder of MAG-CS; ```PubMed/``` is the dataset folder of PubMed; ```allenai/specter2_base/``` is the pre-trained specter2 model. (The pre-trained specter2 model is from [here](https://huggingface.co/allenai/specter2_base/tree/main).)
 
 Put the three folders under the main directory ```./```. Then you need to run the following scripts. 
 
