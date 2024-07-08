@@ -37,9 +37,9 @@ Prepare training and testing data. Training document pairs are generated using d
 ```
 ./run_kd.sh
 ```
-P@_k_, NDCG@_k_, PSP@_k_, and PSN@_k_ scores (_k_=1,3,5) will be shown in the last several lines of the output. The prediction results can be found in ```./{dataset}_output/prediction_{architecture}.json``` (e.g., ```./MAG_output/prediction_cross.json```).
+P@_k_, NDCG@_k_, PSP@_k_, and PSN@_k_ scores (_k_=1,3,5) will be shown in the last several lines of the output. The prediction results can be found in ```./{dataset}_output/prediction_{architecture}.json``` (e.g., ```./MAG_output/prediction_kdcross.json```).
 
-You can change the dataset (MAG or PubMed), the meta-path/meta-graph (10 choices, see the [Running](#running) section below), and the architecture (bi or cross) in the script.
+You can change the dataset (MAG or PubMed), the meta-path/meta-graph (10 choices, see the [Running](#running) section below), and the architecture (cross or kdcross) in the script.
 
 ## Data
 Two datasets are used in our paper. They were first released in the [MATCH](https://github.com/yuzhimanhua/MATCH) project. In this paper, we combine the original training and validation sets together as our **unlabeled** training set (that being said, we do not know the labels of these documents, and we only utilize their text and metadata information); we use the original testing set as our testing set. Dataset statistics are listed below.
