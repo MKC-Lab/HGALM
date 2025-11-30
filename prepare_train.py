@@ -9,7 +9,7 @@ from tqdm import tqdm
 def no_intermediate_node(dataset, doc2text, docs, metadata):
 	meta2doc = defaultdict(set)
 	doc2meta = {}
-	with open(f'{dataset}/{dataset}_train.json') as fin:
+	with open(f'{dataset}/{dataset}_train.json', encoding='utf-8') as fin:
 		for idx, line in enumerate(tqdm(fin)):
 			data = json.loads(line)
 			doc = data['paper']
@@ -21,7 +21,7 @@ def no_intermediate_node(dataset, doc2text, docs, metadata):
 				meta2doc[meta].add(doc)
 			doc2meta[doc] = set(metas)
 
-	with open(f'{dataset}_input/dataset.txt', 'w') as fout:
+	with open(f'{dataset}_input/dataset.txt', 'w', encoding='utf-8') as fout:
 		for idx, doc in enumerate(tqdm(doc2meta)):
 			# sample positive
 			dps = [x for x in doc2meta[doc] if x in doc2text]
@@ -43,7 +43,7 @@ def no_intermediate_node(dataset, doc2text, docs, metadata):
 def one_intermediate_node(dataset, doc2text, docs, metadata):
 	meta2doc = defaultdict(set)
 	doc2meta = {}
-	with open(f'{dataset}/{dataset}_train.json') as fin:
+	with open(f'{dataset}/{dataset}_train.json', encoding='utf-8') as fin:
 		for idx, line in enumerate(tqdm(fin)):
 			data = json.loads(line)
 			doc = data['paper']
@@ -55,7 +55,7 @@ def one_intermediate_node(dataset, doc2text, docs, metadata):
 				meta2doc[meta].add(doc)
 			doc2meta[doc] = set(metas)
 
-	with open(f'{dataset}_input/dataset.txt', 'w') as fout:
+	with open(f'{dataset}_input/dataset.txt', 'w', encoding='utf-8') as fout:
 		for idx, doc in enumerate(tqdm(doc2meta)):
 			# sample positive
 			metas = doc2meta[doc]
@@ -85,7 +85,7 @@ def one_intermediate_node(dataset, doc2text, docs, metadata):
 def one_new_intermediate_node(dataset, doc2text, docs, metadata):
 	meta2doc = defaultdict(set)
 	doc2meta = {}
-	with open(f'{dataset}/{dataset}_train.json') as fin:
+	with open(f'{dataset}/{dataset}_train.json', encoding='utf-8') as fin:
 		for idx, line in enumerate(tqdm(fin)):
 			data = json.loads(line)
 			doc = data['paper']
@@ -97,7 +97,7 @@ def one_new_intermediate_node(dataset, doc2text, docs, metadata):
 				meta2doc[meta].add(doc)
 			doc2meta[doc] = set(metas)
 
-	with open(f'{dataset}_input/dataset.txt', 'w') as fout:
+	with open(f'{dataset}_input/dataset.txt', 'w', encoding='utf-8') as fout:
 		for idx, doc in enumerate(tqdm(doc2meta)):
 			metas = doc2meta[doc]  #doc的参考文献列表
 			# Sample strong positive
@@ -159,7 +159,7 @@ def two_intermediate_node(dataset, doc2text, docs, metadata1, metadata2):
 	meta12doc = defaultdict(set)
 	doc2meta1 = {}
 	doc2meta2 = {}
-	with open(f'{dataset}/{dataset}_train.json') as fin:
+	with open(f'{dataset}/{dataset}_train.json', encoding='utf-8') as fin:
 		for idx, line in enumerate(tqdm(fin)):
 			data = json.loads(line)
 			doc = data['paper']
@@ -176,7 +176,7 @@ def two_intermediate_node(dataset, doc2text, docs, metadata1, metadata2):
 				meta2s = [meta2s]
 			doc2meta2[doc] = set(meta2s)
 
-	with open(f'{dataset}_input/dataset.txt', 'w') as fout:
+	with open(f'{dataset}_input/dataset.txt', 'w', encoding='utf-8') as fout:
 		for idx, doc in enumerate(tqdm(doc2meta1)):
 			# sample positive
 			meta1s = doc2meta1[doc]
@@ -223,7 +223,7 @@ metagraph = args.metagraph
 
 doc2text = {}
 docs = []
-with open(f'{dataset}/{dataset}_train.json') as fin:
+with open(f'{dataset}/{dataset}_train.json', encoding='utf-8') as fin:
 	for idx, line in enumerate(tqdm(fin)):
 		data = json.loads(line)
 		doc = data['paper']
