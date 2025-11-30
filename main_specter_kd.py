@@ -15,7 +15,7 @@ from torch.utils.data import DataLoader
 
 from transformers import BertModel, BertConfig, BertTokenizer, BertTokenizerFast,AutoTokenizer
 from transformers.optimization import AdamW, get_linear_schedule_with_warmup
-# adapters disabled: using plain BertModel instead
+from adapters import AutoAdapterModel
 from dataset import SelectionDataset
 from transform import SelectionSequentialTransform, SelectionJoinTransform, SelectionConcatTransform
 from encoder_kd import BiEncoder, CrossEncoder, kdCrossEncoder
@@ -79,22 +79,23 @@ def eval_running_model(dataloader, test=False):
 
 def pred_running_model(dataloader, out_file):
 	model.eval()
-	with open(out_file, 'w') as fout, tqdm(total=len(dataloader), desc='Predict') as pbar:
+	with open(out_file, 'w') as fout:
 		for step, batch in enumerate(dataloader):
 			batch = tuple(t.to(device) for t in batch)
-			if args.architecture == 'cross' or args.architecture == 'kdcross':
+			if args.architecture == 'cross' or args.architecture =='kdcross':
 				text_token_ids_list_batch, text_input_masks_list_batch, text_segment_ids_list_batch, labels_batch = batch
 				with torch.no_grad():
 					logits = model(text_token_ids_list_batch, text_input_masks_list_batch, text_segment_ids_list_batch)
+					# loss = F.cross_entropy(logits, torch.argmax(labels_batch, 1))
 					for x in logits.flatten().cpu():
-						fout.write(str(x.item()) + '\n')
+						fout.write(str(x.item())+'\n')
 			else:
 				context_token_ids_list_batch, context_input_masks_list_batch, response_token_ids_list_batch, response_input_masks_list_batch, labels_batch = batch
 				with torch.no_grad():
-					logits = model(context_token_ids_list_batch, context_input_masks_list_batch, response_token_ids_list_batch, response_input_masks_list_batch)
+					logits = model(context_token_ids_list_batch, context_input_masks_list_batch,
+							 response_token_ids_list_batch, response_input_masks_list_batch)
 					for x in logits.flatten().cpu():
-						fout.write(str(x.item()) + '\n')
-			pbar.update(1)
+						fout.write(str(x.item())+'\n')
 
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser()
@@ -115,12 +116,8 @@ if __name__ == '__main__':
 	parser.add_argument("--eval_batch_size", default=0, type=int, help="Total batch size fo"
 																	   "r eval.")
 	parser.add_argument("--print_freq", default=500, type=int, help="Log frequency")
-	parser.add_argument("--train_sample_cnt", default=None, type=int, help="Number of training samples to use (None for all)")
-	parser.add_argument("--num_workers", default=0, type=int, help="Number of DataLoader workers")
-	parser.add_argument("--pin_memory", action="store_true", help="Enable pin_memory for DataLoader")
-	parser.add_argument("--eval_sample_cnt", default=None, type=int, help="Limit number of eval samples (None for all)")
 
-	parser.add_argument("--learning_rate", default=8e-5, type=float, help="The initial learning rate for Adam.")
+	parser.add_argument("--learning_rate", default=1e-5, type=float, help="The initial learning rate for Adam.")
 	parser.add_argument("--weight_decay", default=0.01, type=float)
 	parser.add_argument("--warmup_steps", default=100, type=float)
 	parser.add_argument("--adam_epsilon", default=1e-8, type=float, help="Epsilon for Adam optimizer.")
@@ -147,8 +144,7 @@ if __name__ == '__main__':
 	args = parser.parse_args()
 	print(args)
 	set_seed(args)
-	if "CUDA_VISIBLE_DEVICES" not in os.environ or os.environ["CUDA_VISIBLE_DEVICES"] == "":
-		os.environ["CUDA_VISIBLE_DEVICES"] = str(args.cuda)
+	os.environ["CUDA_VISIBLE_DEVICES"] = str(args.cuda)
 	if args.train_batch_size == 0:
 		if args.architecture == 'bi':
 			args.train_batch_size = 8
@@ -166,7 +162,7 @@ if __name__ == '__main__':
 	}
 	ConfigClass, TokenizerClass, BertModelClass = MODEL_CLASSES[args.model_type]
 	# load model and tokenizer
-	tokenizer = AutoTokenizer.from_pretrained(args.bert_model.rstrip('/'), do_lower_case=True, clean_text=False)
+	tokenizer = AutoTokenizer.from_pretrained('allenai/specter2_base', do_lower_case=True, clean_text=False)
 
 
 	## init dataset and bert model
@@ -178,22 +174,16 @@ if __name__ == '__main__':
 	print('Output dir:', args.output_dir)
 
 	if not args.eval:
-		print("[DEBUG] Loading train dataset...")
-		train_dataset = SelectionDataset(os.path.join(args.train_dir, 'train.txt'),
-										 context_transform, response_transform, concat_transform, sample_cnt=args.train_sample_cnt, mode=args.architecture)
-		print("[DEBUG] Loading val dataset...")
-		val_dataset = SelectionDataset(os.path.join(args.train_dir, 'dev.txt'),
-									   context_transform, response_transform, concat_transform, sample_cnt=200, mode=args.architecture)
-		print("[DEBUG] Creating train dataloader...")
-		train_dataloader = DataLoader(train_dataset, batch_size=args.train_batch_size, collate_fn=train_dataset.batchify_join_str, shuffle=True, num_workers=args.num_workers, pin_memory=args.pin_memory)
+		train_dataset = SelectionDataset(os.path.join(args.train_dir, 'train_42.txt'),
+										 context_transform, response_transform, concat_transform, sample_cnt=None, mode=args.architecture)
+		val_dataset = SelectionDataset(os.path.join(args.train_dir, 'dev_42.txt'),
+									   context_transform, response_transform, concat_transform, sample_cnt=4000, mode=args.architecture)
+		train_dataloader = DataLoader(train_dataset, batch_size=args.train_batch_size, collate_fn=train_dataset.batchify_join_str, shuffle=True, num_workers=0)
 		t_total = len(train_dataloader) // args.gradient_accumulation_steps * args.num_train_epochs
-		print(f"[DEBUG] Train dataloader created with {len(train_dataloader)} batches")
 	else:
-		val_dataset = SelectionDataset(args.test_file, context_transform, response_transform, concat_transform, sample_cnt=args.eval_sample_cnt, mode=args.architecture)
+		val_dataset = SelectionDataset(args.test_file, context_transform, response_transform, concat_transform, sample_cnt=None, mode=args.architecture)
 
-	print("[DEBUG] Creating val dataloader...")
-	val_dataloader = DataLoader(val_dataset, batch_size=args.eval_batch_size, collate_fn=val_dataset.batchify_join_str, shuffle=False, num_workers=args.num_workers, pin_memory=args.pin_memory)
-	print(f"[DEBUG] Val dataloader created with {len(val_dataloader)} batches")
+	val_dataloader = DataLoader(val_dataset, batch_size=args.eval_batch_size, collate_fn=val_dataset.batchify_join_str, shuffle=False, num_workers=0)
 
 
 	epoch_start = 1
@@ -203,19 +193,30 @@ if __name__ == '__main__':
 
 	if not os.path.exists(args.output_dir):
 		os.makedirs(args.output_dir)
-	try:
-		tokenizer.save_pretrained(args.output_dir)
-		BertConfig.from_pretrained(args.bert_model.rstrip('/')).to_json_file(os.path.join(args.output_dir, 'config.json'))
-	except Exception:
-		pass
+	shutil.copyfile(os.path.join(args.bert_model, 'vocab.txt'), os.path.join(args.output_dir, 'vocab.txt'))
+	shutil.copyfile(os.path.join(args.bert_model, 'config.json'), os.path.join(args.output_dir, 'config.json'))
 	log_wf = open(os.path.join(args.output_dir, 'log.txt'), 'a', encoding='utf-8')
 	print(args, file=log_wf)
 
 	state_save_path = os.path.join(args.output_dir, '{}_{}_{}_pytorch_model.bin'.format(args.architecture, args.poly_m,args.cuda))
 	device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-	specter_config = ConfigClass.from_pretrained(args.bert_model.rstrip('/'))
-	specter = BertModelClass.from_pretrained(args.bert_model.rstrip('/'), config=specter_config)
+	specter_config = ConfigClass.from_json_file(os.path.join(args.bert_model, 'config.json'))
+	if not args.eval:
+		previous_model_file = os.path.join(args.bert_model, "pytorch_model.bin")
+		print('Loading parameters from', previous_model_file)
+		log_wf.write('Loading parameters from %s' % previous_model_file + '\n')
+		model_state_dict = torch.load(previous_model_file, map_location="cpu")
+		specter = AutoAdapterModel.from_pretrained("allenai/specter2_base", state_dict=model_state_dict)
+		adapter_name = specter.load_adapter("allenai/specter2_classification", source="hf", set_active=True)
+		del model_state_dict
+	else:
+		# specter = AutoAdapterModel.from_config(specter_config)
+		previous_model_file = os.path.join(args.bert_model, "pytorch_model.bin")
+		model_state_dict = torch.load(previous_model_file, map_location="cpu")
+		specter = AutoAdapterModel.from_pretrained("allenai/specter2_base", state_dict=model_state_dict)
+		adapter_name = specter.load_adapter("allenai/specter2_classification", source="hf", set_active=True)
+		del model_state_dict
 	if args.architecture == 'bi':
 		model = BiEncoder(specter_config, bert=specter)
 	elif args.architecture == 'cross':

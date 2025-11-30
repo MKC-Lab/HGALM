@@ -53,34 +53,26 @@ class kdCrossEncoder(BertPreTrainedModel):
 	def forward(self, text_input_ids, text_input_masks, text_input_segments,labels=None):
 		batch_size, neg, dim = text_input_ids.shape
 		if labels is not None:
-			text_vec = self.bert(
-				text_input_ids.reshape(-1, dim),
-				text_input_masks.reshape(-1, dim),
-				text_input_segments.reshape(-1, dim)
-			)[0][:, 0, :]
-			text_vec = text_vec.view(batch_size, neg, -1)
+			#正例
+			# 一次性处理整个批次的数据，获取text_vec
+			# 正例处理
+			text_vec = self.bert(text_input_ids.reshape(-1, dim), text_input_masks.reshape(-1, dim),text_input_segments.reshape(-1, dim))
+			text_v = text_vec[0][:, 0, :]  # [bs, dim]
+			score = self.linear(text_v)/ self.scale_factors[0]
+			score = score.view(-1, neg)
+			mloss =  (-F.log_softmax(score, -1)[:, 0].mean())
+			# 次强
+			wp_vec = text_vec[0][:,0,:].view(batch_size, neg, -1)[:, 1:, :].reshape(-1, 768)
+			score = self.linear(wp_vec)/self.scale_factors[1]
+			score = score.view(-1, 3)
+			# score = score.view(-1, 2)
+			wploss =  (-F.log_softmax(score, -1)[:, 0].mean())
+			# #次次
+			wwp_vec = text_vec[0][:,0,:].view(batch_size, neg, -1)[:, 2:, :].reshape(-1, 768)
 
-			main_score = self.linear(text_vec.reshape(-1, text_vec.size(-1))) / self.scale_factors[0]
-			main_score = main_score.view(batch_size, neg)
-			mloss = (-F.log_softmax(main_score, -1)[:, 0].mean())
-
-			wp_count = max(0, neg - 1)
-			if wp_count > 0:
-				wp_vec = text_vec[:, 1:, :].reshape(-1, text_vec.size(-1))
-				wp_score = self.linear(wp_vec) / self.scale_factors[1]
-				wp_score = wp_score.view(batch_size, wp_count)
-				wploss = (-F.log_softmax(wp_score, -1)[:, 0].mean())
-			else:
-				wploss = torch.zeros_like(mloss)
-
-			wwp_count = max(0, neg - 2)
-			if wwp_count > 0:
-				wwp_vec = text_vec[:, 2:, :].reshape(-1, text_vec.size(-1))
-				wwp_score = self.linear(wwp_vec) / self.scale_factors[2]
-				wwp_score = wwp_score.view(batch_size, wwp_count)
-				wwploss = (-F.log_softmax(wwp_score, -1)[:, 0].mean())
-			else:
-				wwploss = torch.zeros_like(mloss)
+			score = self.linear(wwp_vec)/self.scale_factors[2]
+			score = score.view(-1, 2)
+			wwploss = (-F.log_softmax(score, -1)[:, 0].mean())
 			scale_loss = F.relu(self.scale_factors[0] - self.scale_factors[1]) + F.relu(self.scale_factors[1] - self.scale_factors[2])
 			# scale_loss = F.relu(self.scale_factors[0] - self.scale_factors[1])
 			return [mloss,wploss,wwploss,scale_loss,self.scale_factors,self.scale_factors1]

@@ -8,7 +8,6 @@ import pickle
 
 class SelectionDataset(Dataset):
 	def __init__(self, file_path, context_transform, response_transform, concat_transform, sample_cnt=None, mode='poly'):
-		print(f"[DEBUG] Loading dataset from {file_path}, sample_cnt={sample_cnt}, mode={mode}")
 		self.context_transform = context_transform
 		self.response_transform = response_transform
 		self.concat_transform = concat_transform
@@ -47,7 +46,6 @@ class SelectionDataset(Dataset):
 				group['context'] = context
 			if len(group['responses']) > 0:
 				self.data_source.append(group)
-		print(f"[DEBUG] Loaded {len(self.data_source)} samples")
 
 	def __len__(self):
 		return len(self.data_source)
